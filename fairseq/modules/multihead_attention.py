@@ -9,7 +9,7 @@ from torch.nn import Parameter
 import torch.nn.functional as F
 
 from fairseq import utils
-
+import pdb
 
 class MultiheadAttention(nn.Module):
     """Multi-headed attention.
@@ -113,7 +113,6 @@ class MultiheadAttention(nn.Module):
                     key = value = None
         else:
             saved_state = None
-
         if self.self_attention:
             # self-attention
             q, k, v = self.in_proj_qkv(query)
@@ -131,7 +130,7 @@ class MultiheadAttention(nn.Module):
             q = self.in_proj_q(query)
             k = self.in_proj_k(key)
             v = self.in_proj_v(value)
-        q *= self.scaling
+        q = q * self.scaling
 
         if self.bias_k is not None:
             assert self.bias_v is not None

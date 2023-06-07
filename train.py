@@ -17,7 +17,12 @@ from fairseq import checkpoint_utils, distributed_utils, options, progress_bar, 
 from fairseq.data import iterators
 from fairseq.trainer import Trainer
 from fairseq.meters import AverageMeter, StopwatchMeter
-
+import pdb
+#fix debug code
+torch.backends.cudnn.enabled = False#2023-2-16
+device='cuda'
+import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:516"
 
 def main(args, init_distributed=False):
     utils.import_user_module(args)
@@ -287,7 +292,6 @@ def distributed_main(i, args, start_rank=0):
 def cli_main():
     parser = options.get_training_parser()
     args = options.parse_args_and_arch(parser)
-
     if args.distributed_init_method is None:
         distributed_utils.infer_init_method(args)
 

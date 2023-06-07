@@ -15,9 +15,11 @@ from fairseq.data import (
     TokenBlockDataset,
     TransformEosDataset,
     TruncatedDictionary,
+    ChunkedDataset,
+    AddChunkStampDataset,
 )
 from fairseq.tasks import FairseqTask, register_task
-
+import pdb
 
 @register_task('language_modeling')
 class LanguageModelingTask(FairseqTask):
@@ -168,11 +170,23 @@ class LanguageModelingTask(FairseqTask):
         )
         # False
         add_eos_for_other_targets = self.args.sample_break_mode is not None and self.args.sample_break_mode != 'none'
-
+        # ar test 
+        # self.datasets[split] = AddChunkStampDataset(
+        #         dataset, dataset.sizes, self.dictionary, self.output_dictionary,
+        #         add_eos_for_other_targets = add_eos_for_other_targets, shuffle = True,
+        #         targets=self.targets, add_bos_token=self.args.add_bos_token,
+        #         restore_way = 'Stay_half_chunk', chunk_option= 'NAR_insingleword'
+        # )
+        # self.datasets[split] = ChunkedDataset(
+        #         dataset, dataset.sizes, self.dictionary, self.output_dictionary, max_chunklength = 5,
+        #         add_eos_for_other_targets = add_eos_for_other_targets, shuffle = True,
+        #         targets=self.targets, add_bos_token=self.args.add_bos_token,
+        #         restore_way = 'Stay_half_chunk', chunk_option= 'NAR_insingleword'
+        # )
         self.datasets[split] = MonolingualDataset(
-            dataset, dataset.sizes, self.dictionary, self.output_dictionary,
-            add_eos_for_other_targets=add_eos_for_other_targets, shuffle=True,
-            targets=self.targets, add_bos_token=self.args.add_bos_token,
+           dataset, dataset.sizes, self.dictionary, self.output_dictionary,
+           add_eos_for_other_targets=add_eos_for_other_targets, shuffle=True,
+           targets=self.targets, add_bos_token=self.args.add_bos_token,
         )
 
     def build_dataset_for_inference(self, src_tokens, src_lengths):

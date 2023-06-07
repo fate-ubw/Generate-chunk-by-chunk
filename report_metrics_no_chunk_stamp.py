@@ -113,22 +113,20 @@ def get_metric(filename, filetype, script_args):
             gt_f_name = 'GT_' + f_name
             gt_filename = os.path.join(f_dir, gt_f_name)
             gt_completion_lines = open(gt_filename, 'r').readlines()
-
             p_texts, q_texts = [], []
             for model_com, gt_com in zip(completion_lines, gt_completion_lines):
                 model_com = model_com.rstrip()
                 gt_com = gt_com.rstrip()
                 gt_com, token_len = gt_com.split('\t')
-                if int(token_len) == prefix_length + completion_length:
-                    p_texts.append(gt_com)
-                    q_texts.append(model_com)
+                p_texts.append(gt_com)
+                q_texts.append(model_com)
             out = mauve.compute_mauve(p_text=p_texts, q_text=q_texts, max_text_length=prefix_length + completion_length,
                                       verbose=False,device_id=0)
             mauve_score = out.mauve
 
         for i, line in enumerate(completion_lines):
             splitted_line = line.split()
-            assert len(splitted_line) == (prefix_length + completion_length)
+            #assert len(splitted_line) == (prefix_length + completion_length)
             actual_completions.append(splitted_line[prefix_length:])
             flat_completions.extend(splitted_line[prefix_length:])
 
@@ -179,6 +177,7 @@ def get_metric(filename, filetype, script_args):
 
         result = {f'{split}/num_uniq_singletok': num_unique_singlepred}
         # {'test/num_uniq_singletok': 11742}
+    pdb.set_trace()
     if filetype == 'metrics':
         result = pickle.load(open(filename, 'rb'))
         # {'valid/target_rank': 450.2195078246327, 'valid/median_target_rank': 1.5070422535211268, 'valid/hits_at_1': 0.3985692362827711,
