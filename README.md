@@ -1,218 +1,116 @@
-# DITTO [NeurIPS 2022]
+# 代码说明
 
-The codes can be used to reproduce the results [DITTO](https://arxiv.org/abs/2206.02369) for open-ended generation (Wikitext-103) and abstractive summrization (DNN/DailyMail).
 
-[Learning to Break the Loop: Analyzing and Mitigating Repetitions for Neural Text Generation](https://arxiv.org/abs/2206.02369), by [Jin Xu](https://jxu-thu.github.io/), Xiaojiang Liu, Jianhao Yan, Deng Cai, Huayang Li and [Jian Li](https://people.iiis.tsinghua.edu.cn/~jianli/), is a research work for analyzing the sentence-level repetition issues, mitigating it and improving the learning ability and generalizability of language models at the training stage.
+## 程序手册
 
-The codes for open-ended generations include
-* `runs/MLE.sh`: Normal MLE training
-* `runs/DITTO.sh`: Fine-tune the MLE trained models with DITTO
+### runs
+- MLE_sar_chunk_chunkposition.sh
 
-All configuration and architecture have been included in the .sh scripts.
+ ~~~python
+ rm -rf /ceph-jd/pub/jupyter/yangly/notebooks/DITTO-main/fairseq/models/.ipynb_checkpoints
 
-### Installation
+  
 
-```
-conda create --name py37_torch python=3.7
-pip install torch==1.4.0
-pip install --editable .
-pip install nltk
-pip install pandas
-pip install ipython
-pip install pytorch-transformers   # (optional); for GPT-2 fine-tuning
-pip install tensorflow==1.14
-pip install tensorboardX           # (optional); for tensorboard logs
-pip install --user networkx==2.3
-pip install --user matplotlib==3.1.0
-pip install seaborn
-pip install mauve-text==0.2.0
-pip install transformers==4.17.0
-pip install huggingface-hub==0.4.0conda create --name py37_torch python=3.7
-pip install torch==1.4.0
-pip install --editable .
-pip install nltk
-pip install pandas
-pip install ipython
-pip install pytorch-transformers   # (optional); for GPT-2 fine-tuning
-pip install tensorflow==1.14
-pip install tensorboardX           # (optional); for tensorboard logs
-pip install --user networkx==2.3
-pip install --user matplotlib==3.1.0
-pip install seaborn
-pip install mauve-text==0.2.0
-pip install transformers==4.17.0
-pip install huggingface-hub==0.4.0
-```
+SAVE_DIR=/ceph-jd/pub/jupyter/yangly/notebooks/DITTO-main/checkpoints/model_sar_chunk
 
-### Dataset
-Prepare the dataset following [Unlikelihood](https://github.com/facebookresearch/unlikelihood_training) by downloading and unpacking the binarized wikitext-103 dataset (160MB, install wget if needed):
-```
-mkdir datas && cd datas
-wget https://dl.fbaipublicfiles.com/unlikelihood/wikitext-103_v0.tar.gz
-tar xzvf wikitext-103_v0.tar.gz
-cd ..
-```
-
-### Create a checkpoint folder
-```
-mkdir checkpoints
-```
-
-### MLE Training
-We train the models using 8*Tesla V100 32GB gpu(s).
-```
-SAVE_DIR=checkpoints/baseline_model
 mkdir -p $SAVE_DIR
 
-python -u train.py \
---task language_modeling_with_generation datas/data-bin/wikitext-103 \
-    --user-dir ./fairseq/custom --arch transformer_lm_ul --max-tokens 1536 --tokens-per-sample 1536 \
-    --fp16 --max-update 286000 --max-lr 1.0 --t-mult 2 --lr-period-updates 270000 \
-    --lr-scheduler cosine --lr-shrink 0.75 --warmup-updates 16000 --warmup-init-lr 1e-07 --min-lr 1e-09 \
-    --optimizer nag --lr 0.0001 --clip-norm 0.1 --update-freq 3 --seed 1 --sample-break-mode none \
-    --skip-invalid-size-inputs-valid-test --ddp-backend no_c10d --save-interval-updates 10000 \
-    --keep-interval-updates 2 --no-progress-bar --log-interval 100 \
-    --criterion cross_entropy_wcustom_metrics \
-    --save-dir $SAVE_DIR \
-    --max-epoch 30 \
-    --tensorboard-logdir $SAVE_DIR 2>&1 | tee -a $SAVE_DIR/log.txt
- ```
+  
 
-### DITTO Fine-tuning
-We further fine-tune the pre-trained models with DITTO loss. We train the models using 8*Tesla V100 32GB gpu(s).
-```
-PRE_TRAIN_DIR=checkpoints/baseline_model
-SAVE_DIR=checkpoints/DITTO_openended
-mkdir -p $SAVE_DIR
+export HOME=/ceph-jd/pub/jupyter/yangly/notebooks/DITTO-main/
 
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 
-python -u ./train.py \
---task language_modeling_pe_rep datas/data-bin/wikitext-103 \
-    --user-dir ./fairseq/custom --arch transformer_lm_ul --max-tokens 1536 --tokens-per-sample 1536 \
-    --fp16 --max-update 10000 --max-lr 1.0e-2 --t-mult 2 --lr-period-updates 270000 \
-    --lr-scheduler cosine --lr-shrink 0.75 --warmup-updates 0 --warmup-init-lr 1e-07 --min-lr 1e-09 \
-    --optimizer nag --lr 0.0001 --clip-norm 0.1 --update-freq 6 --seed 1 --sample-break-mode none \
-    --skip-invalid-size-inputs-valid-test --ddp-backend no_c10d --save-interval-updates 100 \
-    --keep-interval-updates 2 --no-progress-bar --log-interval 10 \
-    --rank-alpha 1.0 --sequence-level-train-rate 0.5 \
-    --rep_reduce_gamma 0.5 \
-    --reset-lr-scheduler --reset-optimizer --reset-meters \
-    --compute-metrics-interval 1 \
-    --restore-file $PRE_TRAIN_DIR/checkpoint_best.pt \
-    --criterion cross_entropy_wcustom_metrics \
-    --save-dir $SAVE_DIR \
-    --tensorboard-logdir $SAVE_DIR 2>&1 | tee -a $SAVE_DIR/log.txt
-```
+export WORLD_SIZE=8
 
-### Evaluation
-Run the below commands for greedy decoding
-```
-TASK=DITTO_openended
-SAVE_LOG_PATH=evaluation_logs
+export PYTHONWARNINGS='ignore:semaphore_tracker:UserWarning'
 
-mkdir -p $SAVE_LOG_PATH
+export device='cuda'
 
-DS_SPLIT=test
-bms=1
-bnb=0
-tpk=1
-tpp=0
-sttpk=1
-sttpp=0
+#unset WORLD_SIZE
 
+unset MASTER_PORT
 
-SAVE_PATH=checkpoints/$TASK
-ls -l $SAVE_PATH
-python -u fairseq/custom/evaluation.py \
-    --batch-size-single-prediction 1536 --batch-size-completion 48 \
-    --data-prefix-length 50 --completion-length 100 \
-    --save-path $SAVE_LOG_PATH --ckpt best \
-    --model-path $SAVE_PATH \
-    --data-split $DS_SPLIT \
-    --beam-size $bms --beam-ngram-block $bnb --topp $tpp --topk $tpk --singletoken-topk $sttpk --singletoken-topp $sttpp \
-    --data-dir datas/data-bin/wikitext-103 \
-    --base-dir ./
+unset RANK
 
-# Note that mauve calculation is very slow.
-python report_metrics.py \
-    --eval-dir $SAVE_LOG_PATH \
-    --report-mauve \
-    --model-names $TASK
-```
+unset MASTER_ADDR
 
-Run the below commands for top-p decoding
-```
-TASK=DITTO_openended
-SAVE_LOG_PATH=evaluation_logs
+  
 
-mkdir -p $SAVE_LOG_PATH
+python -u -W ignore /ceph-jd/pub/jupyter/yangly/notebooks/DITTO-main/train.py \
 
-DS_SPLIT=test
-bms=1
-bnb=0
-tpk=1
-tpp=0.9
-sttpk=1
-sttpp=0
+--task language_modeling_with_generation_sar_chunk /ceph-jd/pub/jupyter/yangly/notebooks/DITTO-main/datas/data-bin/chunked_wikitext-103 \
+
+--user-dir /ceph-jd/pub/jupyter/yangly/notebooks/DITTO-main/fairseq/custom --arch transformer_sar_lm_ul --max-tokens 1536 --tokens-per-sample 1536 \
+
+--fp16 --max-update 286000 --max-lr 1.0 --t-mult 2 --lr-period-updates 270000 \
+
+--lr-scheduler cosine --lr-shrink 0.75 --warmup-updates 16000 --warmup-init-lr 1e-07 --min-lr 1e-09 \
+
+--no-epoch-checkpoints \
+
+--optimizer nag --lr 0.0001 --clip-norm 0.1 --update-freq 3 --seed 1 --sample-break-mode none \
+
+--skip-invalid-size-inputs-valid-test --ddp-backend no_c10d --save-interval-updates 10000 \
+
+--keep-interval-updates 2 --no-progress-bar --log-interval 100 \
+
+--criterion cross_entropy_wcustom_metrics \
+
+--save-dir $SAVE_DIR \
+
+--tensorboard-logdir $SAVE_DIR 2>&1 | tee -a $SAVE_DIR/log.txt
+
+  
+
+rm -rf /ceph-jd/pub/jupyter/yangly/notebooks/DITTO-main/fairseq/models/.ipynb_checkpoints
+ ~~~
+
+### fairseq/models
+-  transformer_sar.py
+	- main function：该文件定义了sar decoder模型
+	- 定义 TransformerSarDecoder 类，继承于 transformer.py 文件中TransformerDecoder类，TransformerSarDecoder 类别将会在 transformer_lm_sar.py 文件中实例化，该类编写了sar模型的主要结构
+	- 重写__init__（），并且初始化两种positional embedding
+	- 重写 extract_features() 方法，重新编写模型的forward部分，替换了 ar 模型的 mask 矩阵和 position encoding
+
+- transformer_lm_sar.py
+	- main funcion：该文件整合了基础类别，定义了sar语言模型
+	- 定义 TransformerSarLanguageModel 类，该类继承于transformer_lm.py 文件中的 TransformerLanguageModel 类，
+	- 重写 build_model() 方法，在 build_model() 中定义 TransformerSarDecoder 
+	- 注册 transformer_sar_lm 模型
+	- 注册  transformer_sar_lm_big 模型
+
+### fairseq/moduels
+- interchunk_learned_positional_embedding.py
+	- main function：该类主要定义了chunk之间learned positional embedding
+	- 定义InterchunkLearnedPositionalEmbedding类，继承于 nn.Embedding, 该类会在transformer_sar.py 文件中实例化
+- insidechunk_learned_positional_embedding.py
+	- main function：定义chunk内部的positional embedding
+	- 定义 InsidechunkLearnedPositionalEmbedding 类，继承于 nn.Embedding, 该类同样会在transformer_sar.py 文件中实例化
+
+### fairseq/data
+- add_chunkstamp_dataset.py
+	- main function：针对 ar 模型训练 chunked wikitext 数据集所编写的 dataloader 函数。wikitext-103经过spacy 处理过后的数据chunked wikitext103，只有属于 chunk 的数据加入了<chunk_s> 与<chunk_e>特征，非chunk的数据并没有加入<chunk_s> 与<chunk_e>特征。但是模型在训练时将非chunk也加入 <chunk_s> 与<chunk_e>特征，认为其同样是一个chunk
+	- 定义class AddChunkStampDataset 继承于 MonolingualDataset，AddChunkStampDataset 类将在 language_modeling_with_generation_ar_chunk.py 中进行实例化
+
+- chunked_dataset.py
+	- main function：针对sar模型训练 chunked wikitext 数据集所编写的 dataload 函数。wikitext-103经过spacy 处理过后的数据chunked wikitext-103，只有属于 chunk 的数据加入了<chunk_s> 与<chunk_e>特征，非chunk的数据并没有加入<chunk_s> 与<chunk_e>特征。但是sar模型在训练时将非chunk也加入 <chunk_s> 与<chunk_e>特征，认为其同样是一个chunk
+	- 并且该dataloader 实现对过长的chunk进行截断的功能
+	- 定义class ChunkedDataset， 继承于 MonolingualDataset，ChunkedDataset 在 language_modeling_with_generation_sar_chunk.py 中进行实例化
 
 
-SAVE_PATH=checkpoints/$TASK
-ls -l $SAVE_PATH
-python -u fairseq/custom/evaluation.py \
-    --batch-size-single-prediction 1536 --batch-size-completion 48 \
-    --data-prefix-length 50 --completion-length 100 \
-    --save-path $SAVE_LOG_PATH --ckpt best \
-    --model-path $SAVE_PATH \
-    --data-split $DS_SPLIT \
-    --beam-size $bms --beam-ngram-block $bnb --topp $tpp --topk $tpk --singletoken-topk $sttpk --singletoken-topp $sttpp \
-    --data-dir datas/data-bin/wikitext-103 \
-    --base-dir ./
+### fairseq/customs
+- evaluation_chunked_data.py
+	- 编写专门用于评价文本中带有chunk stamps（<chunk_s> <shunk_e>）的数据，当前版本代码在 evaluate_utils.generate_completions() 模型生成tokens之后删除全部的 <chunk_s> <shunk_e> 是的数据中没有chunk 特征，进行正常的mauve的计算
 
+- language_modeling_with_generation_ar_chunk.py
+	- 注册'language_modeling_with_generation_ar_chunk' 任务，用于 ar 模型训练 chunked wikitext 数据集
+	- 实例化 AddChunkStampDataset 类别，该类为ar模型训练chunker wikitext-103 设计
 
-python report_metrics.py \
-    --eval-dir $SAVE_LOG_PATH \
-    --report-mauve \
-    --model-names $TASK
-```
+- language_modeling_with_generation_sar_chunk.py
+	- 注册 'language_modeling_with_generation_sar_chunk' 任务，用于 sar 模型训练 chunked wikitext 数据集
+	- 实例化 ChunkedDataset 类别，该类为sar模型训练chunker wikitext-103 设计
 
-### Analyze Self-reinforcement Effect
-We prepare some sentences to construct repetitive sequences for analyses. We provide some sentences in data/wiki_sentences.txt and you can use any other sentences for analyses.
-
-You can change the $SAVE_PATH to the baseline (MLE) or DITTO ckpt to see the comparison of the self-reinforcement effect.
-```
-bms=1
-bnb=0
-tpk=1
-tpp=0
-sttpk=1
-sttpp=0
-TASK=DITTO_openended
-SAVE_PATH=checkpoints/$TASK
-
-DOC_FILE=data/wiki_sentences.txt
-EVAL_SAVE_DIR=analyses/$TASK
-FINAL_DIR=analyses_final/$TASK
-ls -l $SAVE_PATH
-
-mkdir -p $EVAL_SAVE_DIR
-
-python -u fairseq/custom/eval_manual_rep_document.py \
-    --batch-size-single-prediction 1536 --batch-size-completion 48 \
-    --data-prefix-length 50 --completion-length 100 \
-    --ckpt best \
-    --model-path $SAVE_PATH \
-    --save_dir $EVAL_SAVE_DIR \
-    --document_path $DOC_FILE \
-    --beam-size $bms --beam-ngram-block $bnb --topp $tpp --topk $tpk --singletoken-topk $sttpk --singletoken-topp $sttpp \
-    --data-dir datas/data-bin/wikitext-103 \
-    --base-dir ./
-
-# Calculate the statictics and draw several figures
-
-mkdir -p $FINAL_DIR
-python -u fairseq/custom/repetition_para_parse.py \
-    --pkl_dir $EVAL_SAVE_DIR \
-    --save_dir $FINAL_DIR 
-
-```
-
+- transformer_arch.py
+	- 注册 'transformer_sar_lm_ul' 
+	- 注册 'transformer_sar_lm_debug'
