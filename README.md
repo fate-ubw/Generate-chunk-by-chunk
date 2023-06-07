@@ -4,6 +4,7 @@
 ## 程序手册
 
 ### runs
+- 训练sar模型的sh文件
 - MLE_sar_chunk_chunkposition.sh
 
  ~~~python
