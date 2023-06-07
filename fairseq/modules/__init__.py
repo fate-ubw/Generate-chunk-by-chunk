@@ -28,7 +28,8 @@ from .transformer_sentence_encoder import TransformerSentenceEncoder
 from .unfold import unfold1d
 from .transformer_layer import TransformerDecoderLayer, TransformerEncoderLayer
 from .vggblock import VGGBlock
-
+from .insidechunk_learned_positional_embedding import InsidechunkLearnedPositionalEmbedding
+from .interchunk_learned_positional_embedding import InterchunkLearnedPositionalEmbedding
 __all__ = [
     'AdaptiveInput',
     'AdaptiveSoftmax',
@@ -57,4 +58,6 @@ __all__ = [
     'TransformerEncoderLayer',
     'VGGBlock',
     'unfold1d',
+    'InsidechunkLearnedPositionalEmbedding',
+    'InterchunkLearnedPositionalEmbedding',
 ]

@@ -36,7 +36,8 @@ from .token_block_dataset import TokenBlockDataset
 from .transform_eos_dataset import TransformEosDataset
 from .transform_eos_lang_pair_dataset import TransformEosLangPairDataset
 from .truncate_dataset import TruncateDataset
-
+from .chunked_dataset import ChunkedDataset
+from .add_chunkstamp_dataset import AddChunkStampDataset
 from .iterators import (
     CountingIterator,
     EpochBatchIterator,
@@ -85,4 +86,6 @@ __all__ = [
     'TransformEosLangPairDataset',
     "TruncateDataset",
     'TruncatedDictionary',
+    'ChunkedDataset',
+    'AddChunkStampDataset',
 ]
